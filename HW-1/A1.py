@@ -142,6 +142,12 @@ tilt = 0
 
 myQuadric = 0   # Initialized in initGL after ogl context creation
 
+
+s2count = 1
+s1count = 1
+model = range(15)
+
+
 '''
 OpenGL stores 4x4 matrices in column major order and so the 
 list of list representation that is returned is 
@@ -218,17 +224,17 @@ def drawScene():
     #Draw the first object, coloredCube. 
     glPushMatrix()
     glTranslatef( 0, -0.5, -3)
-    glRotatef(movingCameraAngle,  0, 1, 0)
+    glRotatef(20,  0, 1, 0)
     glScalef(0.7, 1, 0.6)
     drawColoredCube(1)
     glPopMatrix()
     
     #draw the second object, a deformed ball.
     glPushMatrix()
-    glTranslatef( 0.7, 0, 0.7)
+    glTranslatef( 0.7, -0.5, 0)
     glRotatef(20,  0, 1, 0)
-    glScalef(0.3, 1, 0.4)
-    glutWireTeapot(1)
+    glScalef(0.3, 0.25, 0.4)
+    gluSphere(myQuadric, 2, 32, 32)
     glPopMatrix()
  
     #draw the 3rd object, a cylinder surface
@@ -504,17 +510,34 @@ def perspective(fovy, aspect, near, far):
     P = np.eye(4)
     #TODO: ---------------  ADD YOUR CODE HERE ---------------------
     #  ---------------   BEGIN SOLUTION  -----------------------
+    P = P * projective(near, far)
     
+    top = tan(fovy / 2 / 180.0 * pi) * near
+    bottom = -top
+    right = aspect * top
+    left = -right
+    
+    P = P * translate([-1, -1, -1])
+    P = P * scale([2/(right - left), 2/(top - bottom), -2/(far - near)])
+    P = P * translate([-left, -bottom, near])           
+    '''
+    #here is the second solution, provided in ex.5
+    P = P * translate([0, 0, 1])
+    P = P * scale([2/(near*aspect*tan(fovy / 2 / 180.0 * pi)), 2/(near*tan(fovy / 2 / 180.0 * pi)), 2/(near - far)])
+    P = P * translate([0, 0, near]) 
+    '''
     #  ---------------   END SOLUTION  -----------------------
     return np.matrix(P)
 
 # ---- ADD CODE IN Viewport4() ----
+
+
 def Viewport4():
     global eyeX,  eyeY,  eyeZ, left, right, bottom, top, near, far
     global pan, tilt
     global sizeViewport
     global movingCameraPos, movingCameraRadius, movingCameraAngle
-    
+    global s2count, s1count
     
     ''' -----------------  VIEWPORT 4   -----------------------
     
@@ -532,39 +555,56 @@ def Viewport4():
                        1,     #aspect
                        .01,  #near
                        20)  #far            
+        #model = glGetFloatv(GL_PROJECTION_MATRIX)
+        #print(model)  //these two lines are used to print the opengl matrix. for debug only.
+        
         glMatrixMode(GL_MODELVIEW) 
         glLoadIdentity()
-        
+
         lookat = [0.0, 0.0, -(near + far)/2]
         updir =  [0.0, 1.0, 0.0]
-    
+        
         #TODO: ---------------  ADD YOUR CODE HERE ---------------------
         #  ---------------   BEGIN SOLUTION  -----------------------
-          
-        movingCameraTilt = -rad2deg(arctan2(movingCameraPos[1], movingCameraRadius))
-        deg = movingCameraAngle
-        glPushMatrix()
-    #  position and move this camera
-        glRotatef( -movingCameraTilt, 1, 0, 0)    
-        
-        glRotatef( -deg, 0, 1, 0  )  
-        glTranslatef( -movingCameraPos[0],  -movingCameraPos[1], -movingCameraPos[2])
+         
+        gluLookAt( movingCameraPos[0], movingCameraPos[1], movingCameraPos[2], lookat[0], lookat[1], lookat[2], updir[0], updir[1], updir[2])     
         drawScene()
         drawMovingViewVolume()  
-        glPopMatrix()
-    
-    
-      
-        
+               
         #  ---------------   END SOLUTION  -----------------------
     else: # perform projection and lookat without using gl functions
-        pass
-    
-        #TODO: ---------------  ADD YOUR CODE HERE ---------------------
+        
+        #TODO: ---------------  ADD YOUR CODE HERE ---------------------       
         #  ---------------   BEGIN SOLUTION  -----------------------
         
-        #  ---------------   END SOLUTION  -----------------------
+        #define the PROJECTION matrix, by using the perspective function
+               
+        glMatrixMode(GL_PROJECTION)
+        glPushMatrix()
+        glLoadIdentity()
+        glMultMatrixd(np.transpose(perspective(60, 1, 0.01, 20)))
+        #gluPerspective(60, 1, 0.01, 20)        
+        glPopMatrix()
         
+     
+        #define the MODELVIEW matrix, by multiply the transformation matrix
+        glMatrixMode(GL_MODELVIEW)
+        glPushMatrix() 
+        glLoadIdentity()
+        
+        #this is the rotation angle, degrees
+        movingCameraTilt = -rad2deg(arctan2(movingCameraPos[1], movingCameraRadius))
+        deg = movingCameraAngle
+       
+        glMultMatrixd(np.transpose(rotateX(movingCameraTilt)))
+        glMultMatrixd(np.transpose(rotateY(deg)))
+        glMultMatrixd(np.transpose(translate([-movingCameraPos[0],  -movingCameraPos[1], -movingCameraPos[2]])))
+       
+        drawScene() 
+        drawMovingViewVolume()                
+        glPopMatrix()
+   
+        #  ---------------   END SOLUTION  -----------------------        
     # ----------------- DONE RENDERING VIEWPORTS  -----------------------
 
 def drawMain():
