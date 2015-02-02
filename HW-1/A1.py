@@ -201,14 +201,14 @@ def drawScene():
       
     #Create the ground
     #Define the boundray of four points of the ground
-    #The position of the floor in on the y = -1
+    #The height of the floor is y = -1
     ground_vertices = (
     (-2, -1, 2),
     (2, -1, 2),
     (2, -1, -5),
     (-2, -1, -5),
     )
- 
+    #Draw the floor
     glBegin(GL_QUADS) 
     
     for vertex in ground_vertices:
@@ -218,16 +218,13 @@ def drawScene():
     glEnd()
     #Finish the drawing of ground   
     
-    #Draw the first object, coloredCube. 
+    #Draw three static objects. Notice that the scale and translate parameters
+    #are defined to put the objects exactly on the floor.
+    #Draw the first object, colored cube. 
     glPushMatrix()
-    '''    
-    glTranslatef( 0, -0.5, -3)
+    glTranslatef(0, -0.75, -3)
     glRotatef(20,  0, 1, 0)
-    glScalef(0.7, 1, 0.6)
-    '''
-   
-    glTranslatef(0, 0, -3)
-    glRotatef(movingCameraAngle, 0, 1, 0)
+    glScalef(0.7, 0.5, 0.6)
     drawColoredCube(1)
     glPopMatrix()
     
@@ -246,10 +243,7 @@ def drawScene():
     glScalef(0.5, 0.5, 0.5)
     gluCylinder(myQuadric, 1, 1, 2, 32, 32);
     glPopMatrix()
-    
-      
-    
-    
+   
     #  ---------------   END SOLUTION  ----------------------- 
 
 # ------ ADD CODE IN drawMovingViewVolume() ------
@@ -268,6 +262,8 @@ def drawMovingViewVolume():
     #TODO:  ---------------  ADD YOUR CODE HERE ---------------------
     #  ---------------   BEGIN SOLUTION  -----------------------
     
+    #The transformations reflect the motion of the camera
+    #Notice the sign of the parameters
     glPushMatrix()
     glTranslatef( eyeX, eyeY, eyeZ )
     glRotatef(tilt,  1, 0, 0)
@@ -409,33 +405,25 @@ def Viewport3():
     glPopMatrix()
     
     #TODO:  ---------------  ADD YOUR CODE HERE ---------------------
-    #  ---------------   BEGIN SOLUTION  -----------------------
-           
-    #draw the fixed view volume     
+    #  ---------------   BEGIN SOLUTION  -----------------------    
+   
     glPushMatrix()
-    glTranslatef( -1, -1, -1 )  
-    glScalef(2 / (right - left), 2 / (top - bottom), -2 / (far - near))
-    glTranslatef( -left, -bottom, near )
-    glMultMatrixd(np.transpose(M))
-    drawViewVolume(left, right, bottom, top, near, far)
-    glPopMatrix()   
-  
-    glPushMatrix()
-    #adjust the direction, thus the translate distance should change
     #nomarlization
+    #adjust the Z-direction, thus the translate distance should change
     glTranslatef( -1, -1, 1 ) 
     glScalef(2 / (right - left), 2 / (top - bottom), 2 / (far - near))
     glTranslatef( -left, -bottom, near )
-    #projective    
+    #projective transformation 
     glMultMatrixd(np.transpose(M))
+    #draw the fixed view volume
     drawViewVolume(left, right, bottom, top, near, far)
-    
     #update the camera motion
-    #notice this sign setting here, after some trial work
+    #notice this sign setting
     glTranslatef( -eyeX, eyeY, -eyeZ )
-    glRotatef(tilt,  1, 0, 0)
+    glRotatef(-tilt,  1, 0, 0)
     glRotatef(pan, 0, 1, 0)
-    drawScene()  
+    #draw the dynamically changed objects and the floor.  
+    drawScene()
     drawMovingCamera()
     glPopMatrix()
        
@@ -515,12 +503,14 @@ def perspective(fovy, aspect, near, far):
     P = np.eye(4)
     #TODO: ---------------  ADD YOUR CODE HERE ---------------------
     #  ---------------   BEGIN SOLUTION  -----------------------
-   
+    
+    #calculate the top, bottom, right and left of the camera, based on 4 parameters
     top = tan(fovy / 2 / 180.0 * pi) * near
     bottom = -top
     right = aspect * top
     left = -right
   
+    #normalization
     A = translate([-1, -1, -1])
     B = A * scale([2/(right - left), 2/(top - bottom), -2/(far - near)])
     C = B * translate([-left, -bottom, near])
@@ -556,8 +546,6 @@ def Viewport4():
                        1,     #aspect
                        .01,  #near
                        20)  #far            
-        #model = glGetFloatv(GL_PROJECTION_MATRIX)
-        #print(model)  #these two lines are used to print the opengl matrix. for debug only.
         
         glMatrixMode(GL_MODELVIEW) 
         glLoadIdentity()
@@ -567,10 +555,11 @@ def Viewport4():
         
         #TODO: ---------------  ADD YOUR CODE HERE ---------------------
         #  ---------------   BEGIN SOLUTION  -----------------------
-         
-        gluLookAt( movingCameraPos[0], movingCameraPos[1], movingCameraPos[2], lookat[0], lookat[1], lookat[2], updir[0], updir[1], updir[2])     
+        
+        #Directly use the OpenGL gluLookAt function
+        gluLookAt(movingCameraPos[0], movingCameraPos[1], movingCameraPos[2], lookat[0], lookat[1], lookat[2], updir[0], updir[1], updir[2])     
         drawScene()
-        drawMovingViewVolume()  
+        drawMovingViewVolume()
                
         #  ---------------   END SOLUTION  -----------------------
     else: # perform projection and lookat without using gl functions
@@ -579,38 +568,31 @@ def Viewport4():
         #  ---------------   BEGIN SOLUTION  -----------------------
         
         #define the PROJECTION matrix, by using the perspective function
-               
         glMatrixMode(GL_PROJECTION)
         glPushMatrix()
         glLoadIdentity()
-        #MMP = [1.73, 0, 0, 0, 0, 1.73, 0, 0, 0, 0, -1, -1, 0, 0, -0.02, 0]
         glMultMatrixd(np.transpose(perspective(60, 1, 0.01, 20)))
-        #glMultMatrixd(np.transpose(MMP))
-        #gluPerspective(60, 1, 0.01, 20)
-        
         #model = glGetFloatv(GL_PROJECTION_MATRIX)
-        #print(model)  #these two lines are used to print the opengl matrix. for debug only.
-        
-        
+        #print(model)  #these two lines are used to print the matrix. for debugging only.              
      
         #define the MODELVIEW matrix, by multiply the transformation matrix
         glMatrixMode(GL_MODELVIEW)
         glPushMatrix() 
         glLoadIdentity()
         
-        #this is the rotation angle, degrees
+        #calculation the camera rotation angle (degrees)
         movingCameraTilt = -rad2deg(arctan2(movingCameraPos[1], movingCameraRadius))
         deg = movingCameraAngle
-       
+        #transformation
         glMultMatrixd(np.transpose(rotateX(movingCameraTilt)))
         glMultMatrixd(np.transpose(rotateY(deg)))
         glMultMatrixd(np.transpose(translate([-movingCameraPos[0],  -movingCameraPos[1], -movingCameraPos[2]])))
-       
         drawScene() 
         drawMovingViewVolume()                
         glPopMatrix()
         
-        glMatrixMode(GL_PROJECTION) #change back to GL_PROJECTION Mode to pop projection matrix
+        #change back to GL_PROJECTION Mode to pop projection matrix
+        glMatrixMode(GL_PROJECTION) 
         glPopMatrix() # pop projection matrix, apply projection on the scene
    
         #  ---------------   END SOLUTION  -----------------------        
