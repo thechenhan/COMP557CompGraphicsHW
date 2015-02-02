@@ -200,7 +200,6 @@ def drawScene():
     
       
     #Create the ground
-    ground_surfaces = (0,1,2,3)
     #Define the boundray of four points of the ground
     #The position of the floor in on the y = -1
     ground_vertices = (
@@ -209,12 +208,10 @@ def drawScene():
     (2, -1, -5),
     (-2, -1, -5),
     )
+ 
+    glBegin(GL_QUADS) 
     
-    glBegin(GL_QUADS)
-    
-    x = 0
     for vertex in ground_vertices:
-        x += 1
         glColor3fv((0,1,1))
         glVertex3fv(vertex)
         
@@ -223,9 +220,14 @@ def drawScene():
     
     #Draw the first object, coloredCube. 
     glPushMatrix()
+    '''    
     glTranslatef( 0, -0.5, -3)
     glRotatef(20,  0, 1, 0)
     glScalef(0.7, 1, 0.6)
+    '''
+   
+    glTranslatef(0, 0, -3)
+    glRotatef(movingCameraAngle, 0, 1, 0)
     drawColoredCube(1)
     glPopMatrix()
     
@@ -416,17 +418,20 @@ def Viewport3():
     glTranslatef( -left, -bottom, near )
     glMultMatrixd(np.transpose(M))
     drawViewVolume(left, right, bottom, top, near, far)
-    glPopMatrix()
-    
-    #update the Scene
+    glPopMatrix()   
+  
     glPushMatrix()
-    glTranslatef( -1, -1, -1 )  
-    #notice the positive value
+    #adjust the direction, thus the translate distance should change
+    #nomarlization
+    glTranslatef( -1, -1, 1 ) 
     glScalef(2 / (right - left), 2 / (top - bottom), 2 / (far - near))
     glTranslatef( -left, -bottom, near )
+    #projective    
     glMultMatrixd(np.transpose(M))
+    drawViewVolume(left, right, bottom, top, near, far)
     
-    #notice this sign setting here
+    #update the camera motion
+    #notice this sign setting here, after some trial work
     glTranslatef( -eyeX, eyeY, -eyeZ )
     glRotatef(tilt,  1, 0, 0)
     glRotatef(pan, 0, 1, 0)
@@ -510,22 +515,18 @@ def perspective(fovy, aspect, near, far):
     P = np.eye(4)
     #TODO: ---------------  ADD YOUR CODE HERE ---------------------
     #  ---------------   BEGIN SOLUTION  -----------------------
-    P = P * projective(near, far)
-    
+   
     top = tan(fovy / 2 / 180.0 * pi) * near
     bottom = -top
     right = aspect * top
     left = -right
-    
-    P = P * translate([-1, -1, -1])
-    P = P * scale([2/(right - left), 2/(top - bottom), -2/(far - near)])
-    P = P * translate([-left, -bottom, near])           
-    '''
-    #here is the second solution, provided in ex.5
-    P = P * translate([0, 0, 1])
-    P = P * scale([2/(near*aspect*tan(fovy / 2 / 180.0 * pi)), 2/(near*tan(fovy / 2 / 180.0 * pi)), 2/(near - far)])
-    P = P * translate([0, 0, near]) 
-    '''
+  
+    A = translate([-1, -1, -1])
+    B = A * scale([2/(right - left), 2/(top - bottom), -2/(far - near)])
+    C = B * translate([-left, -bottom, near])
+    D = C * projective(near, far)
+    P = D
+ 
     #  ---------------   END SOLUTION  -----------------------
     return np.matrix(P)
 
@@ -556,7 +557,7 @@ def Viewport4():
                        .01,  #near
                        20)  #far            
         #model = glGetFloatv(GL_PROJECTION_MATRIX)
-        #print(model)  //these two lines are used to print the opengl matrix. for debug only.
+        #print(model)  #these two lines are used to print the opengl matrix. for debug only.
         
         glMatrixMode(GL_MODELVIEW) 
         glLoadIdentity()
@@ -582,9 +583,14 @@ def Viewport4():
         glMatrixMode(GL_PROJECTION)
         glPushMatrix()
         glLoadIdentity()
+        #MMP = [1.73, 0, 0, 0, 0, 1.73, 0, 0, 0, 0, -1, -1, 0, 0, -0.02, 0]
         glMultMatrixd(np.transpose(perspective(60, 1, 0.01, 20)))
-        #gluPerspective(60, 1, 0.01, 20)        
-        glPopMatrix()
+        #glMultMatrixd(np.transpose(MMP))
+        #gluPerspective(60, 1, 0.01, 20)
+        
+        #model = glGetFloatv(GL_PROJECTION_MATRIX)
+        #print(model)  #these two lines are used to print the opengl matrix. for debug only.
+        
         
      
         #define the MODELVIEW matrix, by multiply the transformation matrix
@@ -603,6 +609,9 @@ def Viewport4():
         drawScene() 
         drawMovingViewVolume()                
         glPopMatrix()
+        
+        glMatrixMode(GL_PROJECTION) #change back to GL_PROJECTION Mode to pop projection matrix
+        glPopMatrix() # pop projection matrix, apply projection on the scene
    
         #  ---------------   END SOLUTION  -----------------------        
     # ----------------- DONE RENDERING VIEWPORTS  -----------------------
